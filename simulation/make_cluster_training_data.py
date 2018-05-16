@@ -35,7 +35,7 @@ first_number=1856
 # Make sure working folders exist
 if not os.path.exists(dir_name):
     print("Creating folder", dir_name)
-    for subf in ['label', 'wave', 'model']:
+    for subf in ['label', 'wave', 'model', 'points']:
         os.makedirs(os.path.join(dir_name, subf))
 
 # Create the main object for making clusters
@@ -59,6 +59,7 @@ for i in range(num_examples):
     atoms.rotate(v='y',a=np.pi/4.)
 
     # Find the atomic columns
+    positions=atoms.get_positions()
     clusters = fcluster(linkage(positions[:,:2]), 1, criterion='distance')
     unique,indices=np.unique(clusters, return_index=True)
     
