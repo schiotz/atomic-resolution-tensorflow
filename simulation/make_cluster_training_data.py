@@ -30,7 +30,7 @@ dir_name='../data/cluster-110-single-class'
 if False:
     dir_name += '-test'
 
-first_number=1856
+first_number=0
 
 # Make sure working folders exist
 if not os.path.exists(dir_name):
@@ -109,5 +109,6 @@ for i in range(num_examples):
     wave.save('{0}/wave/wave_{1:04d}.npz'.format(dir_name,first_number+i))
     write('{0}/model/model_{1:04d}.cfg'.format(dir_name,first_number+i),model)
 
-    print('iteration',i)
+    print('iteration', i, flush=True)
+
 print("Time to simulate models: {:.2f} s.".format(time.time() - before))
