@@ -46,7 +46,11 @@ class DataEntry(object):
         if self.points_file is not None:
             npzfile = np.load(self.points_file)
             self._sites = npzfile['sites'] 
-            self._classes = npzfile['classes'] 
+            try:
+                self._classes = npzfile['classes']
+            except KeyError:
+                self._classes = None
+            self._heights = npzfile['heights']
         
     def create_image(self, ctf, sampling, blur, dose, MTF_param=None, concatenate=False):
         image = self._wave.apply_ctf(ctf).detect(resample=sampling,blur=blur,dose=dose,MTF_param=MTF_param)
@@ -61,10 +65,14 @@ class DataEntry(object):
         
         if shape is None:
             shape=self._image.shape[1:-1]
-        
-        self._label=create_label(self._sites[:,:2]/sampling,shape,width=width,classes=self._classes,null_class=True,num_classes=num_classes)
+
+        if num_classes is False:   # Explicit label meaning no classes.
+            self._label=create_label(self._sites[:,:2]/sampling, shape, width=width,
+                                     classes=None, null_class=False, num_classes=None)
+        else:
+            self._label=create_label(self._sites[:,:2]/sampling,shape,width=width,classes=self._classes,null_class=True,num_classes=num_classes)
         #self._label=create_label(self._sites[:,:2]/sampling,shape,width=width,classes=None,null_class=True,num_classes=num_classes)
-        #self._label=create_label(self._sites[:,:2]/sampling,shape,width=width,classes=None,null_class=False,num_classes=num_classes)
+        #
         self._label=self._label.reshape((1,)+self._label.shape)
     
     def create_sites(self,sampling,radius):
@@ -93,26 +101,26 @@ class DataEntry(object):
     def normalize(self):
         self._image = mods.normalize(self._image)
     
-    def random_brightness(self,low,high):
-        self._image=mods.random_brightness(self._image,low,high)
+    def random_brightness(self, low, high, rnd=np.random.uniform):
+        self._image=mods.random_brightness(self._image, low, high, rnd)
     
-    def random_contrast(self,low,high):
-        self._image=mods.random_contrast(self._image,low,high)
+    def random_contrast(self, low, high, rnd=np.random.uniform):
+        self._image=mods.random_contrast(self._image, low, high, rnd)
     
-    def random_gamma(self,low,high):
-        self._image=mods.random_gamma(self._image,low,high)
+    def random_gamma(self, low, high, rnd=np.random.uniform):
+        self._image=mods.random_gamma(self._image, low, high, rnd)
     
-    def random_flip(self):
+    def random_flip(self, rnd=np.random.rand):
         if self._sites is not None:
-            self._image,self._label,self._sites = mods.random_flip(self._image,self._label,self._sites)
+            self._image,self._label,self._sites = mods.random_flip(self._image,self._label,self._sites, rnd)
         else:
-            self._image,self._label = mods.random_flip(self._image,self._label)
+            self._image,self._label = mods.random_flip(self._image,self._label, rnd)
     
-    def random_crop(self,image_size,sampling=None):
+    def random_crop(self, image_size, sampling=None, randint=np.random.randint):
         orig_size=self._image.shape[1:3]
     
-        n=np.random.randint(0,orig_size[0]-image_size[0])
-        m=np.random.randint(0,orig_size[1]-image_size[1])
+        n=randint(0,orig_size[0]-image_size[0])
+        m=randint(0,orig_size[1]-image_size[1])
 
         self._image=self._image[:,n:n+image_size[0],m:m+image_size[1],:]
         

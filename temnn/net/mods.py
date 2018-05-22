@@ -38,10 +38,10 @@ def local_normalize(images, sigma1, sigma2):
         
     return images
 
-def random_flip(images,labels,positions=None):
+def random_flip(images, labels, positions=None, rnd=np.random.rand):
     
     for i in range(len(images)):
-        if np.random.rand() < .5:
+        if rnd() < .5:
             images[i,:,:,:] = np.fliplr(images[i,:,:,:])
             labels[i,:,:,:] = np.fliplr(labels[i,:,:,:])
             
@@ -49,7 +49,7 @@ def random_flip(images,labels,positions=None):
                 positions[:,1]-=images.shape[1]/2
                 positions[:,1]*=-1
                 positions[:,1]+=images.shape[1]/2-1
-        if np.random.rand() < .5:
+        if rnd() < .5:
             images[i,:,:,:] = np.flipud(images[i,:,:,:])
             labels[i,:,:,:] = np.flipud(labels[i,:,:,:])
             
@@ -92,25 +92,19 @@ def random_blur(images,low,high=None):
         images[i,:,:,0]=gaussian(images[i,:,:,0].astype(float),sigma)
     return images
 
-def random_brightness(images,low,high=None):
-    if high is None:
-        high=low
+def random_brightness(images, low, high, rnd=np.random.uniform):
     for i in range(len(images)):
-        images[i,:,:,0]=images[i,:,:,0]+np.random.uniform(low,high)
+        images[i,:,:,0]=images[i,:,:,0]+rnd(low,high)
     return images
 
-def random_contrast(images,low,high=None):
-    if high is None:
-        high=low
+def random_contrast(images, low, high, rnd=np.random.uniform):
     for i in range(len(images)):
         mean=np.mean(images[i,:,:,0])
-        images[i,:,:,0]=(images[i,:,:,0]-mean)*np.random.uniform(low,high)+mean
+        images[i,:,:,0]=(images[i,:,:,0]-mean)*rnd(low,high)+mean
     return images
     
-def random_gamma(images,low,high=None):
-    if high is None:
-        high=low
+def random_gamma(images, low, high, rnd=np.random.uniform):
     for i in range(len(images)):
         min=np.min(images[i,:,:,0])
-        images[i,:,:,0]=(images[i,:,:,0]-min)*np.random.uniform(low,high)+min
+        images[i,:,:,0]=(images[i,:,:,0]-min)*rnd(low,high)+min
     return images

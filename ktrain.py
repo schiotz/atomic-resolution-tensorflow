@@ -5,10 +5,18 @@ import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import tensorflow as tf
+import keras
+from keras.utils import multi_gpu_model
 from pyqstem.imaging import CTF
-from temnn.net import net
+#from temnn.net import net
+from temnn.knet import net
 from temnn.net.dataset import DataSet, DataEntry
 from temnn.net.labels import create_label
+import sys
+import os
+import time
+from collections import deque
+from multiprocessing import Pool
 
 def load(data_dir):
     
@@ -45,30 +53,52 @@ def show_examples(data, size, n=3):
     
     plt.tight_layout()
     plt.show()
-    
-def next_example(data,size):
 
-    sampling = np.random.uniform(.084,.09)
-    Cs = np.random.uniform(-28,-32) * 10**4
-    defocus = np.random.uniform(80,100)
-    focal_spread = np.random.uniform(50,60)
+class randomscale:
+    def __init__(self, rnd):
+        self.rnd = rnd
+        self.n = 0
+    def __call__(self, low=0.0, high=1.0):
+        r = self.rnd[self.n]
+        self.n += 1
+        return (high - low) * r + low
+    def randint(self, low, high):
+        r = self()
+        ri = int(np.floor((high - low) * r)) + low
+        assert low <= ri < high
+        return ri
+
+def makeimage(entry, size, rndnums):
+    """Make a TEM image.
+
+    entry: A data entry containing at least an exit wave function.
+
+    size:  Size of desired image in pixels (2-tuple).
+
+    rndnums: XX random numbers (uniformly in [0;1[).  This prevents
+             trouble with random numbers when multiprocessing.
+    """
+    rnd = randomscale(rndnums)
+    
+    sampling = rnd(.084,.09)
+    Cs = rnd(-28,-32) * 10**4
+    defocus = rnd(80,100)
+    focal_spread = rnd(50,60)
     
     aberrations={'a22' : 50, 
-                'phi22' : np.random.rand() * 2 * np.pi,
+                'phi22' : rnd(0, 2 * np.pi),
                 'a40' : 1.4 * 10**6}
     
-    dose = 10**np.random.uniform(2,4)
+    dose = 10**rnd(2,4)
     
-    c1=np.random.uniform(.9,1)
-    c2=np.random.uniform(0,.01)
-    c3=np.random.uniform(.3,.4)
-    c4=np.random.uniform(2.4,2.6)
+    c1=rnd(.9,1)
+    c2=rnd(0,.01)
+    c3=rnd(.3,.4)
+    c4=rnd(2.4,2.6)
     
     mtf_param=[c1,c2,c3,c4]
     
-    blur = np.random.uniform(5,7)
-    
-    entry=data.next_batch(1)[0]
+    blur = rnd(5,7)
     
     entry.load()
     
@@ -76,113 +106,136 @@ def next_example(data,size):
     
     entry.create_image(ctf,sampling,blur,dose,mtf_param)
     
-    entry.create_label(sampling, width = int(.4/sampling))
+    entry.create_label(sampling, width = int(.4/sampling), num_classes=False)
     
     entry.local_normalize(12./sampling, 12./sampling)
     
-    entry.random_crop((424,) * 2, sampling)
+    entry.random_crop((424,) * 2, sampling, randint=rnd.randint)
     
-    entry.random_brightness(-.1,.1)
-    entry.random_contrast(.9,1.1)
-    entry.random_gamma(.9,1.1)
+    entry.random_brightness(-.1, .1, rnd=rnd)
+    entry.random_contrast(.9, 1.1, rnd=rnd)
+    entry.random_gamma(.9, 1.1, rnd=rnd)
     
-    entry.random_flip()
+    entry.random_flip(rnd=rnd)
     image,label=entry.as_tensors()
     entry.reset()
     
     return image,label
+
+# Use multiprocessing to generate many sample datasets
+class MakeImages:
+    def __init__(self, data, imagesize):
+        self.data = data
+        self.precomputed = []
+        self.batchsize = 200
+        self.imagesize = np.array(imagesize)
+
+    def precompute(self):
+        print("Precomputing {} images.".format(self.batchsize), flush=True)
+        entries = self.data.next_batch(self.batchsize)
+        rndnums = np.random.uniform(0.0, 1.0, size=(self.batchsize, 20))
+        imagesizes = self.imagesize[np.newaxis,:] * np.ones(self.batchsize)[:,np.newaxis]
+        assert imagesizes.shape == (self.batchsize, 2)
+        with Pool() as pool:
+            self.precomputed = deque(pool.starmap(makeimage, 
+                                                    zip(entries, imagesizes, rndnums)))
+            
+    def next_example(self):
+        if not self.precomputed:
+            self.precompute()
+        return self.precomputed.popleft()
+
    
 def summary_image(y,size):
     return tf.reshape(tf.cast(tf.argmax(y,axis=3),tf.float32),(1,)+size+(1,))
-    
+
 if __name__ == "__main__":
-    
-    data_dir = "data/clusters/"
+    if len(sys.argv) >= 2:
+        folderlabel = '-' + sys.argv[1]
+    else:
+        folderlabel = ''
+        
+    data_dir = "data/cluster-110-single-class/"
     summary_dir = "summaries/" + datetime.now().strftime("%Y%m%d-%H%M%S") + "/"
-    graph_path = 'graphs/clusters.ckpt'
-    new_graph_path = 'graphs/clusters.ckpt'
-    
+    graph_path = 'graphs'+folderlabel+'/clusters-{}.h5'
+
+    graph_dir = os.path.dirname(graph_path)
+    if graph_dir and not os.path.exists(graph_dir):
+        os.makedirs(graph_dir)
+        
     data = load(data_dir)
-    
-    batch_size = 1
+
+    numgpus = 1
+    batch_size=8
+
     image_size = (424,424) # spatial dimensions of input/output
     image_features = 1 # depth of input data
     num_classes = 1 # number of predicted class labels
-    kernel_num = 32 # number at the first level
-    num_epochs = 100 # number of training epochs
-    restore = True # restore previous graph
-    save_every = 100 # iterations between saves
-    loss_type = 'mse' # mse or cross_entropy
-    nonlinearity = 'sigmoid' # sigmoid or softmax
-    weight_decay = 0.002 # weight decay scale
+    num_epochs = 20 # number of training epochs
+    # restore = False # restore previous graph
+    loss_type = 'binary_crossentropy' # mse or binary_cross_entropy
     
-    num_iterations = num_epochs*data.num_examples//batch_size
+    num_in_epoch = data.num_examples//batch_size
+    num_iterations=num_epochs*num_in_epoch
     
-    show_examples(data, image_size, n=4)
+    #show_examples(data, image_size, n=4)
     
-    x = tf.placeholder(tf.float32, shape=(batch_size,)+image_size+(image_features,))
-    y_ = tf.placeholder(tf.float32, shape=(batch_size,)+image_size+(num_classes,))
-    
-    y = net.graph(x,kernel_num,output_features=num_classes)
-    
-    reg_losses = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
-    
-    if loss_type=='mse':
-        y = tf.nn.sigmoid(y)
-        loss = tf.losses.mean_squared_error(y_,y)+weight_decay*tf.reduce_sum(reg_losses)
+    outputcounter = 0
+
+    assert(batch_size % numgpus == 0)
+
+    imagestream = MakeImages(data, image_size)
+
+    if numgpus > 1:
+        with tf.device('/cpu:0'):
+            # The master version of the model is locked onto a CPU, to
+            # prevents slow GPU-GPU communication and out-of-memory
+            # conditions on the hosting GPU.
+            x = keras.Input(shape=image_size+(image_features,))
+            serial_model = net.graph(x, output_features=num_classes)
+
+        model = multi_gpu_model(serial_model, gpus=numgpus)
     else:
-        if nonlinearity == 'softmax':
-            loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=y_,logits=y))+weight_decay*tf.reduce_sum(reg_losses)
-        else:
-            loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(labels=y_,logits=y))+weight_decay*tf.reduce_sum(reg_losses)
-    
-    training_step = tf.train.AdamOptimizer(1e-4).minimize(loss)
+        x = keras.Input(shape=image_size+(image_features,))
+        model = serial_model = net.graph(x, output_features=num_classes)
+        
+    model.compile(optimizer='rmsprop', loss=loss_type,
+                  metrics=['accuracy'])
     
     if not os.path.exists(summary_dir):
         os.makedirs(summary_dir)
     
-    tf.summary.image('input',x,1)
+    print("Starting timing")
+    before = time.time()
+
+    for epoch in range(num_epochs):
+        for i in range(num_in_epoch):
+            #image,label = next_example(data)
+            image,label = imagestream.next_example()
+            if batch_size > 1:
+                image = [image]
+                label = [label]
+                for b in range(1, batch_size):
+                    img2, lbl2 = imagestream.next_example()
+                    image.append(img2)
+                    label.append(lbl2)
+                image = np.concatenate(image)
+                label = np.concatenate(label)
+
+            # Train
+            #y = keras.utils.to_categorical(label,2)
+            #model.train_on_batch(image, y)
+            model.train_on_batch(image, label)
+
+            # Print where we are
+            print("Epoch: {}/{} Batch: {}/{}   [{}/{}]".format(epoch, num_epochs,
+                                                               i, num_in_epoch,
+                                                               (i + epoch*num_in_epoch)*batch_size,
+                                                               num_iterations*batch_size),
+                      flush=True)
+        # Save 
+        serial_model.save_weights(graph_path.format(epoch))
     
-    if num_classes==1:
-        tf.summary.image('label',y_)
-        
-        if loss_type=='mse':
-            tf.summary.image('inference',y)
-        else:
-            tf.summary.image('inference',tf.sigmoid(y))
-    else:
-        tf.summary.image('label',summary_image(y_,image_size))
-        
-        if loss_type=='mse':
-            tf.summary.image('inference',summary_image(y,image_size))
-        else:
-            if nonlinearity == 'softmax':
-                tf.summary.image('inference',summary_image(tf.nn.softmax(y),image_size))
-            else:    
-                tf.summary.image('inference',summary_image(tf.sigmoid(y),image_size))
-    
-    tf.summary.scalar('loss',loss)
-    merged = tf.summary.merge_all()
-    
-    saver = tf.train.Saver()
-    
-    with tf.Session() as sess:
-        sess.run(tf.global_variables_initializer())
-        writer = tf.summary.FileWriter(summary_dir,sess.graph)
-        
-        if restore:
-            saver.restore(sess, graph_path)
-        
-        for i in range(num_iterations):
-            
-            image,label = next_example(data,image_size)
-            
-            summary, _, loss_val, inference = sess.run([merged, training_step, loss, y], feed_dict={x: image, y_: label})
-            
-            writer.add_summary(summary, i)
-            
-            if ((i%save_every==0)&(i>0))|(i==num_iterations-1):
-                save_path = saver.save(sess, new_graph_path)
-                print('Model saved in file: %s' % save_path)
-            
-            print("Epoch: {0}/{1}[{2}/{3}]".format(i//num_iterations,num_epochs,i,num_iterations))
+    totaltime = time.time() - before
+    print("Time: {} sec  ({} hours)".format(totaltime, totaltime/3600))
+              

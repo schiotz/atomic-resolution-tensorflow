@@ -3,7 +3,7 @@ from __future__ import absolute_import, print_function
 from keras.models import Model
 from keras import layers, regularizers
 #from tensorflow import name_scope
-from knet.upsampling import BilinearUpSampling2D
+from .upsampling import BilinearUpSampling2D
 from keras.layers.advanced_activations import PReLU
 from keras import initializers
 
