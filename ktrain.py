@@ -2,6 +2,9 @@ import os
 from datetime import datetime
 from glob import glob
 import numpy as np
+import matplotlib
+matplotlib.use('AGG')
+
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import tensorflow as tf
@@ -18,6 +21,8 @@ import time
 from collections import deque
 from multiprocessing import Pool
 
+debug = True
+
 def load(data_dir):
     
     waves = glob(data_dir+"wave/wave_*.npz")
@@ -27,33 +32,28 @@ def load(data_dir):
     
     return DataSet(entries)
 
-def show_examples(data, size, n=3):
-    
-    image,label=next_example(data,size)
-    
-    fig,axarr=plt.subplots(image.shape[-1]+1,n)
-    
-    for i in range(n):
-        
-        for j in range(image.shape[-1]):
-            im = axarr[j,i].imshow(image[0,:,:,j], interpolation='nearest', cmap='gray')
-            
-            divider = make_axes_locatable(axarr[j,i])
-            cax1 = divider.append_axes("right", size="5%", pad=0.05)
-            cbar = plt.colorbar(im, cax = cax1)
-        
-        im = axarr[1,i].imshow(label[0,:,:,0], cmap='jet')
-        
-        divider = make_axes_locatable(axarr[-1,i])
-        cax2 = divider.append_axes("right", size="5%", pad=0.05)
-        cbar = plt.colorbar(im, cax = cax2)
-        
-        if i < n - 1:
-            image, label = next_example(data, size)
-    
-    plt.tight_layout()
-    plt.show()
+def show_example(image, label, filename):
 
+    plt.figure()
+    fig,axarr=plt.subplots(image.shape[-1]+1, 1)
+
+    for j in range(image.shape[-1]):
+        im = axarr[j].imshow(image[0,:,:,j], interpolation='nearest', cmap='gray')
+
+        divider = make_axes_locatable(axarr[j])
+        cax1 = divider.append_axes("right", size="5%", pad=0.05)
+        cbar = plt.colorbar(im, cax = cax1)
+
+    im = axarr[1].imshow(label[0,:,:,0], cmap='jet')
+
+    divider = make_axes_locatable(axarr[-1])
+    cax2 = divider.append_axes("right", size="5%", pad=0.05)
+    cbar = plt.colorbar(im, cax = cax2)
+        
+    plt.tight_layout()
+    #plt.show()
+    plt.savefig(filename, bbox_inches='tight')
+    
 class randomscale:
     def __init__(self, rnd):
         self.rnd = rnd
@@ -64,16 +64,18 @@ class randomscale:
         return (high - low) * r + low
     def randint(self, low, high):
         r = self()
-        ri = int(np.floor((high - low) * r)) + low
+        ri = int(np.floor((high - low) * r) + low)
         assert low <= ri < high
         return ri
 
-def makeimage(entry, size, rndnums):
+def makeimage(entry, size, imgnum, rndnums):
     """Make a TEM image.
 
     entry: A data entry containing at least an exit wave function.
 
     size:  Size of desired image in pixels (2-tuple).
+
+    imgnum: Sequential number used when plotting in debug mode.
 
     rndnums: XX random numbers (uniformly in [0;1[).  This prevents
              trouble with random numbers when multiprocessing.
@@ -109,8 +111,8 @@ def makeimage(entry, size, rndnums):
     entry.create_label(sampling, width = int(.4/sampling), num_classes=False)
     
     entry.local_normalize(12./sampling, 12./sampling)
-    
-    entry.random_crop((424,) * 2, sampling, randint=rnd.randint)
+
+    entry.random_crop(size, sampling, randint=rnd.randint)
     
     entry.random_brightness(-.1, .1, rnd=rnd)
     entry.random_contrast(.9, 1.1, rnd=rnd)
@@ -119,6 +121,10 @@ def makeimage(entry, size, rndnums):
     entry.random_flip(rnd=rnd)
     image,label=entry.as_tensors()
     entry.reset()
+
+    if debug:
+        fn = debug_dir + "img-{}.png".format(imgnum)
+        show_example(image, label, fn)
     
     return image,label
 
@@ -129,16 +135,19 @@ class MakeImages:
         self.precomputed = []
         self.batchsize = 200
         self.imagesize = np.array(imagesize)
+        self.n = 0
 
     def precompute(self):
         print("Precomputing {} images.".format(self.batchsize), flush=True)
         entries = self.data.next_batch(self.batchsize)
+        sequence = np.arange(self.n, self.n + self.batchsize)
+        self.n += self.batchsize
         rndnums = np.random.uniform(0.0, 1.0, size=(self.batchsize, 20))
-        imagesizes = self.imagesize[np.newaxis,:] * np.ones(self.batchsize)[:,np.newaxis]
+        imagesizes = self.imagesize[np.newaxis,:] * np.ones(self.batchsize, int)[:,np.newaxis]
         assert imagesizes.shape == (self.batchsize, 2)
         with Pool() as pool:
             self.precomputed = deque(pool.starmap(makeimage, 
-                                                    zip(entries, imagesizes, rndnums)))
+                                                    zip(entries, imagesizes, sequence, rndnums)))
             
     def next_example(self):
         if not self.precomputed:
@@ -158,17 +167,21 @@ if __name__ == "__main__":
     data_dir = "data/cluster-110-single-class/"
     summary_dir = "summaries/" + datetime.now().strftime("%Y%m%d-%H%M%S") + "/"
     graph_path = 'graphs'+folderlabel+'/clusters-{}.h5'
-
+    debug_dir = "debug/" +  datetime.now().strftime("%Y%m%d-%H%M%S") + "/"
+    
     graph_dir = os.path.dirname(graph_path)
     if graph_dir and not os.path.exists(graph_dir):
         os.makedirs(graph_dir)
+    if debug:
+        os.makedirs(debug_dir)
         
     data = load(data_dir)
 
     numgpus = 1
-    batch_size=8
+    batch_size=4
 
-    image_size = (424,424) # spatial dimensions of input/output
+    #image_size = (424,424) # spatial dimensions of input/output
+    image_size = (360,360) # spatial dimensions of input/output
     image_features = 1 # depth of input data
     num_classes = 1 # number of predicted class labels
     num_epochs = 20 # number of training epochs
@@ -189,7 +202,7 @@ if __name__ == "__main__":
     if numgpus > 1:
         with tf.device('/cpu:0'):
             # The master version of the model is locked onto a CPU, to
-            # prevents slow GPU-GPU communication and out-of-memory
+            # prevent slow GPU-GPU communication and out-of-memory
             # conditions on the hosting GPU.
             x = keras.Input(shape=image_size+(image_features,))
             serial_model = net.graph(x, output_features=num_classes)

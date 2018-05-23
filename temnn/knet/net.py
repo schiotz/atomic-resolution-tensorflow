@@ -86,8 +86,11 @@ def res_block(x, channels, name='res_block'):
     y = conv_layer(y, channels, name=name+'/conv_3')
     return skip(x, y, name=name+'/add')
 
+#def skip(x, y, name):
+#    return layers.concatenate([x, y], name=name)
+
 def skip(x, y, name):
-    return layers.concatenate([x, y], name=name)
+    return layers.add([x, y], name=name)
 
 def pool_layer(x, name='pool'):
     return layers.MaxPooling2D(pool_size=2, padding='same', name=name)(x)
