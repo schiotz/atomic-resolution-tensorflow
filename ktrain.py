@@ -18,10 +18,11 @@ from temnn.net.labels import create_label
 import sys
 import os
 import time
+import platform
 from collections import deque
 from multiprocessing import Pool
 
-debug = True
+debug = False
 
 def load(data_dir):
     
@@ -33,7 +34,6 @@ def load(data_dir):
     return DataSet(entries)
 
 def show_example(image, label, filename):
-
     plt.figure()
     fig,axarr=plt.subplots(image.shape[-1]+1, 1)
 
@@ -53,6 +53,7 @@ def show_example(image, label, filename):
     plt.tight_layout()
     #plt.show()
     plt.savefig(filename, bbox_inches='tight')
+    plt.clf()  # Clears the figure, avoiding a memory leak.
     
 class randomscale:
     def __init__(self, rnd):
@@ -159,6 +160,10 @@ def summary_image(y,size):
     return tf.reshape(tf.cast(tf.argmax(y,axis=3),tf.float32),(1,)+size+(1,))
 
 if __name__ == "__main__":
+    print("{}: Running on host '{}'".format(
+        datetime.now().strftime("%Y%m%d-%H%M%S"),
+        platform.node()
+    ))
     if len(sys.argv) >= 2:
         folderlabel = '-' + sys.argv[1]
     else:
@@ -177,11 +182,11 @@ if __name__ == "__main__":
         
     data = load(data_dir)
 
-    numgpus = 1
+    numgpus = 4
     batch_size=4
 
-    #image_size = (424,424) # spatial dimensions of input/output
-    image_size = (360,360) # spatial dimensions of input/output
+    image_size = (424,424) # spatial dimensions of input/output
+    #image_size = (360,360) # spatial dimensions of input/output
     image_features = 1 # depth of input data
     num_classes = 1 # number of predicted class labels
     num_epochs = 20 # number of training epochs
