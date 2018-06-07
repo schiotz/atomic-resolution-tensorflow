@@ -32,17 +32,17 @@ else:
     graph_dir = 'kgraphs'
 
 graph_path = os.path.join(graph_dir, 'clusters-{:d}.h5')
-result = os.path.join(graph_dir, 'noisecurve.dat')
+result = os.path.join(graph_dir, 'scalecurve.dat')
 
 # Microscope parameters
 #sampling=0.11953 #244.8/2048
-sampling=0.088
+#sampling=0.088
 Cs=-12*10**4
 defocus=120
 focal_spread=40
 blur=.3
 #dose=5*10**2
-dose = 0
+dose = 2e3
 mtf_param=[1,0,4.89683027e-01,2.34644273e+00]
 
 
@@ -186,10 +186,10 @@ print("Using CNN parameters in", gr)
 x, model = load_CNN(gr, num_gpus)
 
 with open(result, "wt") as outfile:
-    for step, dose in enumerate((1e2, 2e2, 5e2, 1e3, 2e3, 5e3, 1e4)):
-        print("Evaluating dose", dose, flush=True)
+    for step, sampling in enumerate(np.arange(0.06, 0.135, 0.01)):
+        print("Evaluating sampling", sampling, flush=True)
         
-        linedata = [dose]
+        linedata = [sampling]
         for (n, imagestream) in ((n_train, imagestream_train), (n_valid, imagestream_valid)):
             #n = 25
             result = []
