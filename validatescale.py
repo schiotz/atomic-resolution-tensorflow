@@ -211,6 +211,6 @@ with open(result, "wt") as outfile:
             precision = result[:,0].mean()
             recall = result[:,1].mean()
             linedata.extend((precision, recall))
-        line = "{:5.1f}  {:8.6f}  {:8.6f}  {:8.6f}  {:8.6f}".format(*tuple(linedata))
+        line = "{:8.4f}  {:8.6f}  {:8.6f}  {:8.6f}  {:8.6f}".format(*tuple(linedata))
         print("*****", line, flush=True)
         print(line, file=outfile, flush=True)
