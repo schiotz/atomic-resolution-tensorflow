@@ -23,8 +23,8 @@ from multiprocessing import Pool
 
 # Data folders
 data_dir = "data/cluster-110-single-class/"
-#validation_dir = "data/cluster-110-single-class-test/"
-validation_dir = data_dir  # A big no-no
+validation_dir = "data/cluster-110-single-class-test/"
+#validation_dir = data_dir  # A big no-no
 
 if len(sys.argv) >= 2:
     graph_dir = sys.argv[1]
@@ -130,7 +130,7 @@ class MakeImages:
         return np.concatenate(images), np.concatenate(labels)
     
 
-def precision_recall(predicted, target, distance=2.0):
+def precision_recall(predicted, target, distance=6.0):
     """Precision and recall for peak positions"""
     # Precision: Number of correctly predicted peaks 
     # divided by number of target peaks

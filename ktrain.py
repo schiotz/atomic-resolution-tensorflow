@@ -113,11 +113,20 @@ def makeimage(entry, size, imgnum, rndnums):
     
     entry.local_normalize(12./sampling, 12./sampling)
 
-    entry.random_crop(size, sampling, randint=rnd.randint)
-    
-    entry.random_brightness(-.1, .1, rnd=rnd)
-    entry.random_contrast(.9, 1.1, rnd=rnd)
-    entry.random_gamma(.9, 1.1, rnd=rnd)
+    shape = entry._image.shape[1:3]
+    assert not ((size[0] > shape[0]) != (size[1] > shape[1]))
+    if shape[0] > size[1]:
+        assert shape[1] >= size[1]
+        entry.random_crop(size, sampling, randint=rnd.randint)
+    elif shape[0] < size[1]:
+        assert shape[1] <= size[1]
+        entry.pad(size)
+    else:
+        assert shape[1] == size[1]
+        
+    #entry.random_brightness(-.1, .1, rnd=rnd)
+    #entry.random_contrast(.9, 1.1, rnd=rnd)
+    #entry.random_gamma(.9, 1.1, rnd=rnd)
     
     entry.random_flip(rnd=rnd)
     image,label=entry.as_tensors()

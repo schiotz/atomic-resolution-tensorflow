@@ -23,8 +23,7 @@ from multiprocessing import Pool
 
 # Data folders
 data_dir = "data/cluster-110-single-class/"
-#validation_dir = "data/cluster-110-single-class-test/"
-validation_dir = data_dir  # A big no-no
+validation_dir = "data/cluster-110-single-class-test/"
 
 if len(sys.argv) >= 2:
     graph_dir = sys.argv[1]
@@ -37,14 +36,13 @@ result = os.path.join(graph_dir, 'learningcurve.dat')
 # Microscope parameters
 #sampling=0.11953 #244.8/2048
 sampling=0.088
-Cs=-12*10**4
-defocus=120
-focal_spread=40
-blur=.3
+Cs=-30e4
+defocus=90
+focal_spread=55
+blur=6
 #dose=5*10**2
 dose = 5e2
-mtf_param=[1,0,4.89683027e-01,2.34644273e+00]
-
+mtf_param=[1,0,0.35,2.5]
 
 num_gpus = 1
 batch_size = 8 * num_gpus
@@ -130,7 +128,7 @@ class MakeImages:
         return np.concatenate(images), np.concatenate(labels)
     
 
-def precision_recall(predicted, target, distance=2.0):
+def precision_recall(predicted, target, distance=6.0):
     """Precision and recall for peak positions"""
     # Precision: Number of correctly predicted peaks 
     # divided by number of target peaks
