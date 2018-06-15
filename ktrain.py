@@ -34,27 +34,27 @@ def load(data_dir):
     
     return DataSet(entries)
 
-def show_example(image, label, filename):
-    plt.figure()
-    fig,axarr=plt.subplots(image.shape[-1]+1, 1)
+def show_example(image, label, text, filename):
+    fig = plt.figure(figsize=(14,7))
+    ax = fig.add_subplot(1, 2, 1)
 
-    for j in range(image.shape[-1]):
-        im = axarr[j].imshow(image[0,:,:,j], interpolation='nearest', cmap='gray')
+    im = ax.imshow(image[0,:,:,0], interpolation='nearest', cmap='gray')
+    divider = make_axes_locatable(ax)
+    cax1 = divider.append_axes("right", size="5%", pad=0.05)
+    cbar = plt.colorbar(im, cax = cax1)
 
-        divider = make_axes_locatable(axarr[j])
-        cax1 = divider.append_axes("right", size="5%", pad=0.05)
-        cbar = plt.colorbar(im, cax = cax1)
-
-    im = axarr[1].imshow(label[0,:,:,0], cmap='jet')
-
-    divider = make_axes_locatable(axarr[-1])
+    ax = fig.add_subplot(1, 2, 2)
+    im = ax.imshow(label[0,:,:,0], cmap='jet')
+    divider = make_axes_locatable(ax)
     cax2 = divider.append_axes("right", size="5%", pad=0.05)
     cbar = plt.colorbar(im, cax = cax2)
         
     plt.tight_layout()
     #plt.show()
-    plt.savefig(filename, bbox_inches='tight')
-    plt.clf()  # Clears the figure, avoiding a memory leak.
+    fig.savefig(filename+'.png', bbox_inches='tight')
+    with open(filename+'.txt', "wt") as info:
+        info.write(text)
+    plt.close(fig)
     
 class randomscale:
     def __init__(self, rnd):
@@ -134,8 +134,20 @@ def makeimage(entry, size, imgnum, rndnums):
     entry.reset()
 
     if debug:
-        fn = debug_dir + "img-{}.png".format(imgnum)
-        show_example(image, label, fn)
+        text = f"""sampling={sampling} 
+Cs={Cs/1.0e4} 
+defocus={defocus} 
+focal_spread={focal_spread} 
+a22={aberrations['a22']} 
+dose={dose}
+mtf0={mtf_param[0]}
+mtf1={mtf_param[1]}
+mtf2={mtf_param[2]}
+mtf3={mtf_param[3]}
+blur={blur}
+"""
+        fn = debug_dir + "img-{}".format(imgnum)
+        show_example(image, label, text, fn)
     
     return image,label
 
