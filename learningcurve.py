@@ -35,14 +35,14 @@ result = os.path.join(graph_dir, 'learningcurve.dat')
 
 # Microscope parameters
 #sampling=0.11953 #244.8/2048
-sampling=0.088
-Cs=-30e4
+sampling=0.12
+Cs=-15e4
 defocus=90
-focal_spread=55
-blur=6
+focal_spread=30
+blur=2.5
 #dose=5*10**2
 dose = 5e2
-mtf_param=[1,0,0.35,2.5]
+mtf_param=[1,0,0.45,2.5]
 
 num_gpus = 1
 batch_size = 8 * num_gpus
@@ -182,11 +182,16 @@ while os.path.exists(graph_path.format(i)):
     cnnfiles.append(graph_path.format(i))
     i += 1
 print("Found {} CNN parameter files".format(len(cnnfiles)))
-
+cnnfiles = list(enumerate(cnnfiles))
+while len(cnnfiles) > 30:
+    # Keep every second file, but make sure to lose the first rather than the last.
+    cnnfiles = cnnfiles[::-2][::-1]
 
 with open(result, "wt") as outfile:
-    for step, gr in enumerate(cnnfiles):
-        print("Evaluating CNN step {}/{} in {}".format(step+1, len(cnnfiles), gr), flush=True)
+    i = 0
+    for step, gr in cnnfiles:
+        print("Evaluating CNN step {}/{} in {}".format(i, len(cnnfiles), gr), flush=True)
+        i += 1
         x, model = load_CNN(gr, num_gpus)
         
         linedata = [step+1]

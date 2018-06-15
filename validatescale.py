@@ -37,13 +37,14 @@ result = os.path.join(graph_dir, 'scalecurve.dat')
 # Microscope parameters
 #sampling=0.11953 #244.8/2048
 #sampling=0.088
-Cs=-12*10**4
-defocus=120
-focal_spread=40
-blur=.3
+Cs=-30e4
+defocus=90
+focal_spread=30
+blur=2.5
 #dose=5*10**2
 dose = 2e3
-mtf_param=[1,0,4.89683027e-01,2.34644273e+00]
+#mtf_param=[1,0,4.89683027e-01,2.34644273e+00]
+mtf_param=[1,0,0.45,2.5]
 
 
 num_gpus = 1
@@ -186,7 +187,7 @@ print("Using CNN parameters in", gr)
 x, model = load_CNN(gr, num_gpus)
 
 with open(result, "wt") as outfile:
-    for step, sampling in enumerate(np.arange(0.06, 0.135, 0.01)):
+    for step, sampling in enumerate(np.arange(0.05, 0.205, 0.01)):
         print("Evaluating sampling", sampling, flush=True)
         
         linedata = [sampling]

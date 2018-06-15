@@ -35,15 +35,15 @@ result = os.path.join(graph_dir, 'noisecurve.dat')
 
 # Microscope parameters
 #sampling=0.11953 #244.8/2048
-sampling=0.088
+sampling=0.12
 Cs=-30e4
 defocus=90
-focal_spread=55
-blur=6
+focal_spread=30
+blur=2.5
 #dose=5*10**2
 dose = 0
 #mtf_param=[1,0,4.89683027e-01,2.34644273e+00]
-mtf_param=[1,0,0.35,2.5]
+mtf_param=[1,0,0.45,2.5]
 
 
 num_gpus = 1

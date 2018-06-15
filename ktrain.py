@@ -21,6 +21,7 @@ import time
 import platform
 from collections import deque
 from multiprocessing import Pool
+import shutil
 
 debug = False
 
@@ -83,25 +84,25 @@ def makeimage(entry, size, imgnum, rndnums):
     """
     rnd = randomscale(rndnums)
     
-    sampling = rnd(.084,.09)
-    Cs = rnd(-28,-32) * 10**4
-    defocus = rnd(80,100)
-    focal_spread = rnd(50,60)
+    sampling = rnd(.09,.15)
+    Cs = rnd(-20,20) * 1e4
+    defocus = rnd(-200,200)
+    focal_spread = rnd(20,40)
     
     aberrations={'a22' : 50, 
                 'phi22' : rnd(0, 2 * np.pi),
-                'a40' : 1.4 * 10**6}
+                } #'a40' : 1.4 * 10**6}   # Looks like it is replacing Cs in the code!
     
     dose = 10**rnd(2,4)
     
-    c1=rnd(.9,1)
-    c2=rnd(0,.01)
-    c3=rnd(.3,.4)
-    c4=rnd(2.4,2.6)
+    c1=rnd(.95,1)   # 1.0 in paper
+    c2=rnd(0,.01)  # c1 in paper
+    c3=rnd(.4,.6)  # c2 in paper
+    c4=rnd(2.,3.)  # c3 in paper
     
     mtf_param=[c1,c2,c3,c4]
     
-    blur = rnd(5,7)
+    blur = rnd(0, 2.5) #rnd(5,7)
     
     entry.load()
     
@@ -188,6 +189,9 @@ if __name__ == "__main__":
         os.makedirs(graph_dir)
     if debug:
         os.makedirs(debug_dir)
+
+    # Keep a copy of this script for reference
+    shutil.copy2(__file__, graph_dir)
         
     data = load(data_dir)
 
@@ -198,9 +202,11 @@ if __name__ == "__main__":
     #image_size = (360,360) # spatial dimensions of input/output
     image_features = 1 # depth of input data
     num_classes = 1 # number of predicted class labels
-    num_epochs = 20 # number of training epochs
+    num_epochs = 100 # number of training epochs
+    
     # restore = False # restore previous graph
     loss_type = 'binary_crossentropy' # mse or binary_cross_entropy
+    #loss_type = 'mse' # mse or binary_cross_entropy
     
     num_in_epoch = data.num_examples//batch_size
     num_iterations=num_epochs*num_in_epoch
