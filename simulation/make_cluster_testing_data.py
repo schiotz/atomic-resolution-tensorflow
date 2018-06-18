@@ -17,18 +17,18 @@ import time
 
 # Parameters
 N=424
-#sampling=24.48/2048*10 # 0.1195
+#sampling=24.48/2048*10
 sampling = 0.1
 L=sampling*N
-num_examples=1000   # Training
+#num_examples=1000   # Training
 #num_examples=146   # Catch up
-#num_examples=500     # Test
+num_examples=500     # Test
 num_classes=1
 
 dir_name='../data/cluster-110-single-class'
 
 # Generate test set?
-if False:
+if True:
     dir_name += '-test'
 
 first_number=0
@@ -57,7 +57,7 @@ for i in range(num_examples):
 
     atoms=rc.get_cluster('Au')
     
-    atoms.rotate(v='y',a=45.0)
+    atoms.rotate(v='y',a=45.)
 
     # Find the atomic columns
     positions=atoms.get_positions()
