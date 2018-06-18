@@ -35,7 +35,7 @@ result = os.path.join(graph_dir, 'learningcurve.dat')
 
 # Microscope parameters
 #sampling=0.11953 #244.8/2048
-sampling=0.12
+sampling=0.10
 Cs=-15e4
 defocus=90
 focal_spread=30

@@ -84,7 +84,7 @@ def makeimage(entry, size, imgnum, rndnums):
     """
     rnd = randomscale(rndnums)
     
-    sampling = rnd(.09,.15)
+    sampling = rnd(.09,.11)
     Cs = rnd(-20,20) * 1e4
     defocus = rnd(-200,200)
     focal_spread = rnd(20,40)

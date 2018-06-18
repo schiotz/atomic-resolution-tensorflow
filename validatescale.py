@@ -92,10 +92,21 @@ def makeimage(entry, size):
 
     entry.local_normalize(12./sampling, 12./sampling)
     
+    shape = entry._image.shape[1:3]
+    assert not ((size[0] > shape[0]) != (size[1] > shape[1]))
+    if shape[0] > size[1]:
+        assert shape[1] >= size[1]
+        entry.random_crop(size, sampling)
+    elif shape[0] < size[1]:
+        assert shape[1] <= size[1]
+        entry.pad(size)
+    else:
+        assert shape[1] == size[1]
+
     image,label=entry.as_tensors()
     entry.reset()
     
-    return image[:,:size[0],:size[1],:],label[:,:size[0],:size[1],:]
+    return image, label
 
 # Use multiprocessing to generate many sample datasets
 class MakeImages:
@@ -187,7 +198,7 @@ print("Using CNN parameters in", gr)
 x, model = load_CNN(gr, num_gpus)
 
 with open(result, "wt") as outfile:
-    for step, sampling in enumerate(np.arange(0.05, 0.205, 0.01)):
+    for step, sampling in enumerate(np.arange(0.05, 0.151, 0.005)):
         print("Evaluating sampling", sampling, flush=True)
         
         linedata = [sampling]

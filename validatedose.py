@@ -35,7 +35,7 @@ result = os.path.join(graph_dir, 'noisecurve.dat')
 
 # Microscope parameters
 #sampling=0.11953 #244.8/2048
-sampling=0.12
+sampling=0.10
 Cs=-30e4
 defocus=90
 focal_spread=30
