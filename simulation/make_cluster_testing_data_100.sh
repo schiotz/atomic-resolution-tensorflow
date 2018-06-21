@@ -4,7 +4,7 @@
 #SBATCH -n 1
 #SBATCH --partition=xeon16
 #SBATCH --time=10:00:00
-#SBATCH --job-name=mkte110
+#SBATCH --job-name=mkte100
 #SBATCH --output=%x-%j.out
 #SBATCH --mem=40G
 
@@ -14,4 +14,4 @@ export PYTHONPATH=$HOME/development/structural-template-matching/build/lib.linux
 module load ASE
 module load scikit-image scikit-learn tqdm
 
-python make_cluster_testing_data_110.py
+python make_cluster_testing_data_100.py

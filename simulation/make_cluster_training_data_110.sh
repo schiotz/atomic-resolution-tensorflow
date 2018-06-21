@@ -4,7 +4,8 @@
 #SBATCH -n 1
 #SBATCH --partition=xeon16
 #SBATCH --time=10:00:00
-#SBATCH --output=maketrain-%j.out
+#SBATCH --job-name=mktr110
+#SBATCH --output=%x-%j.out
 #SBATCH --mem=40G
 
 module purge
@@ -13,4 +14,4 @@ export PYTHONPATH=$HOME/development/structural-template-matching/build/lib.linux
 module load ASE
 module load scikit-image scikit-learn tqdm
 
-python make_cluster_training_data.py
+python make_cluster_training_data_110.py
