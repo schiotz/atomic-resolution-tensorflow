@@ -36,10 +36,10 @@ result = os.path.join(graph_dir, 'noisecurve.dat')
 # Microscope parameters
 #sampling=0.11953 #244.8/2048
 sampling=0.10
-Cs=-30e4
+Cs=-15e4
 defocus=90
 focal_spread=30
-blur=2.5
+blur=1.5
 #dose=5*10**2
 dose = 0
 #mtf_param=[1,0,4.89683027e-01,2.34644273e+00]
@@ -90,11 +90,22 @@ def makeimage(entry, size):
     entry.create_label(sampling, width = int(.4/sampling), num_classes=False)
 
     entry.local_normalize(12./sampling, 12./sampling)
-    
+
+    shape = entry._image.shape[1:3]
+    assert not ((size[0] > shape[0]) != (size[1] > shape[1]))
+    if shape[0] > size[1]:
+        assert shape[1] >= size[1]
+        entry.random_crop(size, sampling)
+    elif shape[0] < size[1]:
+        assert shape[1] <= size[1]
+        entry.pad(size)
+    else:
+        assert shape[1] == size[1]
+        
     image,label=entry.as_tensors()
     entry.reset()
     
-    return image[:,:size[0],:size[1],:],label[:,:size[0],:size[1],:]
+    return image, label
 
 # Use multiprocessing to generate many sample datasets
 class MakeImages:

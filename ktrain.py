@@ -23,7 +23,7 @@ from collections import deque
 from multiprocessing import Pool
 import shutil
 
-debug = False
+debug = 250
 
 def load(data_dir):
     
@@ -125,15 +125,15 @@ def makeimage(entry, size, imgnum, rndnums):
     else:
         assert shape[1] == size[1]
         
-    #entry.random_brightness(-.1, .1, rnd=rnd)
-    #entry.random_contrast(.9, 1.1, rnd=rnd)
-    #entry.random_gamma(.9, 1.1, rnd=rnd)
+    entry.random_brightness(-.1, .1, rnd=rnd)
+    entry.random_contrast(.9, 1.1, rnd=rnd)
+    entry.random_gamma(.9, 1.1, rnd=rnd)
     
     entry.random_flip(rnd=rnd)
     image,label=entry.as_tensors()
     entry.reset()
 
-    if debug:
+    if debug is True or imgnum < debug:
         text = f"""sampling={sampling} 
 Cs={Cs/1.0e4} 
 defocus={defocus} 
@@ -208,7 +208,7 @@ if __name__ == "__main__":
     data = load(data_dir)
 
     numgpus = 4
-    batch_size=4
+    batch_size = 4
 
     image_size = (424,424) # spatial dimensions of input/output
     #image_size = (360,360) # spatial dimensions of input/output
