@@ -67,11 +67,11 @@ for i in range(num_examples):
     atoms.rotate(v='z',a=np.random.random()*360)
 
     omega=np.random.random()*360
-    alpha=np.random.random()*3
+    alpha=np.random.random()*1.5
 
     atoms.rotate(v='z',a=omega,center='COP')
     atoms.rotate(v='y',a=alpha,center='COP')
-    atoms.rotate(v='z',a=omega,center='COP')
+    atoms.rotate(v='z',a=-omega,center='COP')
 
     atoms.center(vacuum=0)
     size=np.diag(atoms.get_cell())
