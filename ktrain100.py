@@ -192,7 +192,7 @@ if __name__ == "__main__":
     else:
         folderlabel = ''
         
-    data_dir = "data/cluster-110-single-class/"
+    data_dir = "data/cluster-100-single-class/"
     summary_dir = "summaries/" + datetime.now().strftime("%Y%m%d-%H%M%S") + "/"
     graph_path = 'graphs'+folderlabel+'/clusters-{}.h5'
     debug_dir = "debug/" +  datetime.now().strftime("%Y%m%d-%H%M%S") + "/"

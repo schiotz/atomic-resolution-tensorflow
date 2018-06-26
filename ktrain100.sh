@@ -4,7 +4,7 @@
 #SBATCH -n 16
 #SBATCH --partition=xeon16_256
 #SBATCH --time=20:00:00
-#SBATCH --output=ktrain-%j.out
+#SBATCH --output=ktrain100-%j.out
 #SBATCH --mem=0
 #SBATCH --gres=gpu:K20Xm:4
 
@@ -29,10 +29,10 @@ module load scikit-image/0.13.1-foss-2018a-Python-3.6.4
 module load scikit-learn/0.19.1-foss-2018a-Python-3.6.4
 module load tqdm/4.23.4-foss-2018a-Python-3.6.4
 
-time python ktrain.py correct110_v3
-time python learningcurve.py graphs-correct110_v3
-time python validatescale.py graphs-correct110_v3
-time python validatedose.py graphs-correct110_v3
+time python ktrain100.py 100
+time python learningcurve100.py graphs-100
+time python validatescale100.py graphs-100
+time python validatedose100.py graphs-100
 
 
 

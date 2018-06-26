@@ -25,12 +25,17 @@ import shutil
 
 debug = 250
 
-def load(data_dir):
+def load(data_dirs):
     
-    waves = sorted(glob(data_dir+"wave/wave_*.npz"))
-    points = sorted(glob(data_dir+"points/points_*.npz"))
+    if isinstance(data_dirs, str):
+        data_dirs = [data_dirs]
 
-    entries = [DataEntry(wave=w, points=p) for w,p in zip(waves,points)]
+    entries = []
+    for data_dir in data_dirs:
+        waves = sorted(glob(data_dir+"wave/wave_*.npz"))
+        points = sorted(glob(data_dir+"points/points_*.npz"))
+
+        entries += [DataEntry(wave=w, points=p) for w,p in zip(waves,points)]
     
     return DataSet(entries)
 
@@ -192,7 +197,7 @@ if __name__ == "__main__":
     else:
         folderlabel = ''
         
-    data_dir = "data/cluster-110-single-class/"
+    data_dir = ["data/cluster-110-single-class/", "data/cluster-100-single-class/"]
     summary_dir = "summaries/" + datetime.now().strftime("%Y%m%d-%H%M%S") + "/"
     graph_path = 'graphs'+folderlabel+'/clusters-{}.h5'
     debug_dir = "debug/" +  datetime.now().strftime("%Y%m%d-%H%M%S") + "/"
