@@ -23,7 +23,7 @@ from collections import deque
 from multiprocessing import Pool
 import shutil
 
-debug = 250
+debug = 50
 
 def load(data_dir):
     
@@ -216,7 +216,8 @@ if __name__ == "__main__":
     image_features = 1 # depth of input data
     num_classes = 1 # number of predicted class labels
     num_epochs = 100 # number of training epochs
-    
+    save_epochs = 5
+
     # restore = False # restore previous graph
     loss_type = 'binary_crossentropy' # mse or binary_cross_entropy
     #loss_type = 'mse' # mse or binary_cross_entropy
@@ -280,7 +281,8 @@ if __name__ == "__main__":
                                                                num_iterations*batch_size),
                       flush=True)
         # Save 
-        serial_model.save_weights(graph_path.format(epoch))
+        if (epoch+1) % save_epochs == 0:
+            serial_model.save_weights(graph_path.format(epoch))
     
     totaltime = time.time() - before
     print("Time: {} sec  ({} hours)".format(totaltime, totaltime/3600))

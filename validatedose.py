@@ -20,6 +20,7 @@ import sys
 import os
 from collections import deque
 from multiprocessing import Pool
+from natsort import natsorted
 
 # Data folders
 data_dir = "data/cluster-110-single-class/"
@@ -30,7 +31,7 @@ if len(sys.argv) >= 2:
 else:
     graph_dir = 'kgraphs'
 
-graph_path = os.path.join(graph_dir, 'clusters-{:d}.h5')
+graph_path = os.path.join(graph_dir, 'clusters-*.h5')
 result = os.path.join(graph_dir, 'noisecurve.dat')
 
 # Microscope parameters
@@ -189,10 +190,7 @@ print("Number of validation images:", n_train)
 
 # Find the latest CNN
 print("Looking for CNNs in files matching", graph_path)
-i = 1
-while os.path.exists(graph_path.format(i)):
-    gr = graph_path.format(i)
-    i += 1
+gr = list(natsorted(glob(graph_path)))[-1]
 print("Using CNN parameters in", gr)
 x, model = load_CNN(gr, num_gpus)
 
