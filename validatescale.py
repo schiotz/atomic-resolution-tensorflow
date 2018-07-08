@@ -38,8 +38,8 @@ result = os.path.join(graph_dir, 'scalecurve.dat')
 # Microscope parameters
 #sampling=0.11953 #244.8/2048
 #sampling=0.088
-Cs=-15e4
-defocus=90
+Cs=-5e4
+defocus=-90
 focal_spread=30
 blur=1.5
 #dose=5*10**2

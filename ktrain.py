@@ -86,8 +86,8 @@ def makeimage(entry, size, imgnum, rndnums):
     
     sampling = rnd(.09,.11)
     #Cs = rnd(-20,20) * 1e4
-    Cs = rnd(-20,-5) * 1e4
-    defocus = rnd(0,200)
+    Cs = rnd(-20,-3) * 1e4
+    defocus = rnd(-200,0)
     focal_spread = rnd(20,40)
     
     aberrations={'a22' : rnd(0, 50), 
@@ -208,8 +208,16 @@ if __name__ == "__main__":
         
     data = load(data_dir)
 
-    numgpus = 4
-    batch_size = 4
+    # Determine number of GPUS
+    cudavar = 'CUDA_VISIBLE_DEVICES'
+    if cudavar in os.environ:
+        cudadevices = os.environ[cudavar]
+        numgpus = len(cudadevices.split(','))
+        print(cudavar, '=', cudadevices)
+        print("Found {} GPU devices".format(numgpus))
+    else:
+        numgpus = 1
+    batch_size = numgpus
 
     image_size = (424,424) # spatial dimensions of input/output
     #image_size = (360,360) # spatial dimensions of input/output
