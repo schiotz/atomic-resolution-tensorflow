@@ -25,7 +25,7 @@ num_examples=1000   # Training
 #num_examples=500     # Test
 num_classes=1
 
-dir_name='../data/cluster-110-single-class'
+dir_name='../data/cluster-110-single-class-2deg5'
 
 # Generate test set?
 if False:
@@ -67,7 +67,7 @@ for i in range(num_examples):
     atoms.rotate(v='z',a=np.random.random()*360)
 
     omega=np.random.random()*360
-    alpha=np.random.random()*1.5
+    alpha=np.random.random()*2.5
 
     atoms.rotate(v='z',a=omega,center='COP')
     atoms.rotate(v='y',a=alpha,center='COP')
