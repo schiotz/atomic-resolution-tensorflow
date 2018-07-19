@@ -28,6 +28,7 @@ fi
 module load scikit-image/0.13.1-foss-2018a-Python-3.6.4
 module load scikit-learn/0.19.1-foss-2018a-Python-3.6.4
 module load tqdm/4.23.4-foss-2018a-Python-3.6.4
+module load natsort/5.3.3-foss-2018a-Python-3.6.4
 
 time python ktrain100.py 100
 time python learningcurve100.py graphs-100

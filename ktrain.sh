@@ -28,11 +28,12 @@ fi
 module load scikit-image/0.13.1-foss-2018a-Python-3.6.4
 module load scikit-learn/0.19.1-foss-2018a-Python-3.6.4
 module load tqdm/4.23.4-foss-2018a-Python-3.6.4
+module load natsort/5.3.3-foss-2018a-Python-3.6.4
 
-time python ktrain.py correct110_v3
-time python learningcurve.py graphs-correct110_v3
-time python validatescale.py graphs-correct110_v3
-time python validatedose.py graphs-correct110_v3
+time python ktrain.py 110-test
+time python learningcurve.py graphs-110-test
+time python validatescale.py graphs-110-test
+time python validatedose.py graphs-110-test
 
 
 
