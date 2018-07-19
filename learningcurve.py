@@ -12,14 +12,12 @@ from temnn.net.dataset import DataEntry,DataSet
 from pyqstem.imaging import CTF
 import matplotlib.pyplot as plt
 # Peak detection
-from stm.preprocess import normalize
-from stm.feature.peaks import find_local_peaks, refine_peaks
-from skimage.morphology import disk
-from scipy.spatial import cKDTree as KDTree
+from evaluatepeaks import precision_recall, evaluate_result
 import sys
 import os
 from collections import deque
 from multiprocessing import Pool
+import shutil
 from natsort import natsorted
 
 # Data folders
@@ -36,17 +34,24 @@ result = os.path.join(graph_dir, 'learningcurve.dat')
 
 # Microscope parameters
 #sampling=0.11953 #244.8/2048
-sampling=0.10
-Cs=-5e4
-defocus=-90
+sampling=0.21
+spotsize = 0.6  # Normally 0.4
+Cs=-10e4
+defocus=90
 focal_spread=30
 blur=1.5
 #dose=5*10**2
-dose = 5e2
-mtf_param=[1,0,0.45,2.5]
+dose = 5e3
+mtf_param=[1,0,0.38,2.5]
 
 num_gpus = 1
 batch_size = 8 * num_gpus
+
+if 'LSB_MAX_NUM_PROCESSORS' in os.environ:
+    maxcpu = int(os.environ['LSB_MAX_NUM_PROCESSORS'])
+    print("Setting max number of CPUs to", maxcpu, flush=True)
+else:
+    maxcpu = None
 
 def load(data_dir):
     "Load data folder."
@@ -61,7 +66,7 @@ def load(data_dir):
 
 def load_CNN(graph_path, num_gpus=1):
     "Load the Keras neural net, and return a Model."
-    size=(360,360)
+    size=(248,248)
     #size=(328,328)
     kernel_num=32
     image_features=1
@@ -86,7 +91,7 @@ def makeimage(entry, size):
     entry.load()    
     ctf=CTF(defocus=defocus,Cs=Cs,focal_spread=focal_spread)
     entry.create_image(ctf,sampling,blur,dose,mtf_param)
-    entry.create_label(sampling, width = int(.4/sampling), num_classes=False)
+    entry.create_label(sampling, width = int(spotsize/sampling), num_classes=False)
 
     entry.local_normalize(12./sampling, 12./sampling)
 
@@ -118,7 +123,7 @@ class MakeImages:
         #print("Precomputing {} images.".format(self.batchsize), flush=True)
         entries = self.data.next_batch(self.batchsize, shuffle=False)
         imagesizes = self.imagesize[np.newaxis,:] * np.ones(self.batchsize, int)[:,np.newaxis]
-        with Pool() as pool:
+        with Pool(maxcpu) as pool:
             self.precomputed = deque(pool.starmap(makeimage,  zip(entries, imagesizes)))
 
     def next_example(self):
@@ -133,50 +138,15 @@ class MakeImages:
         imagesizes = self.imagesize[np.newaxis,:] * np.ones(n, int)[:,np.newaxis]
         images = []
         labels = []
-        with Pool() as pool:
+        with Pool(maxcpu) as pool:
             for img, lbl in pool.starmap(makeimage, zip(entries, imagesizes)):
                 images.append(img)
                 labels.append(lbl)
         return np.concatenate(images), np.concatenate(labels)
     
 
-def precision_recall(predicted, target, distance=6.0):
-    """Precision and recall for peak positions"""
-    # Precision: Number of correctly predicted peaks 
-    # divided by number of target peaks
-    if len(predicted) == 0:
-        return (0.0, 1.0)
-    if len(target) == 0:
-        return (1.0, 0.0)
-    tree = KDTree(target)
-    x = tree.query(predicted, distance_upper_bound=distance)[0]
-    precision = (x <= distance).sum() / len(predicted)
-    # Recall: Number of target peaks that were found
-    # divided by total number of target peaks
-    tree = KDTree(predicted)
-    x = tree.query(target, distance_upper_bound=distance)[0]
-    recall = (x <= distance).sum() / len(target)
-    return (precision, recall)
 
-def evaluate_result(inference, label):
-    "Evaluate the prediction for an image."
-    # Find the peaks
-    infer_peaks = find_local_peaks(inference[:,:,0], min_distance=25, 
-                                   threshold=0.6, exclude_border=10,
-                                   exclude_adjacent=True)
-    label_peaks = find_local_peaks(label[:,:,0], min_distance=25, 
-                                   threshold=0.6, exclude_border=10,
-                                   exclude_adjacent=True)
-
-    # Refine the peaks
-    region = disk(2)
-    infer_refined = refine_peaks(normalize(inference[:,:,0]), infer_peaks, 
-                                region, model='polynomial')
-    label_refined = refine_peaks(normalize(label[:,:,0]), label_peaks, 
-                                region, model='polynomial')
-    return precision_recall(infer_refined, label_refined)
-
-image_size = (360,360)
+image_size = (248,248)
 data_train = load(data_dir)
 imagestream_train = MakeImages(data_train, image_size)
 n_train = data_train.num_examples
@@ -184,7 +154,10 @@ print("Number of training images:", n_train)
 data_valid = load(validation_dir)
 imagestream_valid = MakeImages(data_valid, image_size)
 n_valid = data_valid.num_examples
-print("Number of validation images:", n_train)
+print("Number of validation images:", n_valid)
+
+# Keep a copy of this script for reference
+shutil.copy2(__file__, graph_dir)
 
 # Find all the CNN parameter files
 print("Looking for CNNs in files matching", graph_path)
@@ -218,8 +191,9 @@ with open(result, "wt") as outfile:
             # precision and recall in parallel
 
             print("Processing predictions.", flush=True)
-            with Pool() as pool:
-                result = list(pool.starmap(evaluate_result, zip(predictions, labels)))
+            with Pool(maxcpu) as pool:
+                result = pool.starmap(evaluate_result, 
+                                      zip(predictions, labels, [sampling]*len(labels)))
             
             result = np.array(result)
             precision = result[:,0].mean()

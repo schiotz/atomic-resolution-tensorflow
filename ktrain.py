@@ -84,10 +84,14 @@ def makeimage(entry, size, imgnum, rndnums):
     """
     rnd = randomscale(rndnums)
     
-    sampling = rnd(.09,.11)
+    sampling = rnd(.19,.23)  # For Pei's movie
+    normalizerange = 12.0 / 0.21
+    #sampling = rnd(.1,.11)  # For Pei's movie
+    #normalizerange = 12.0 / 0.105
+    spotsize = 0.4  # Size of spots in ground truth - normally 0.4
     #Cs = rnd(-20,20) * 1e4
-    Cs = rnd(-20,-3) * 1e4
-    defocus = rnd(-200,0)
+    Cs = rnd(-30,0) * 1e4
+    defocus = rnd(40,200)
     focal_spread = rnd(20,40)
     
     aberrations={'a22' : rnd(0, 50), 
@@ -96,14 +100,14 @@ def makeimage(entry, size, imgnum, rndnums):
     
     dose = 10**rnd(2,4)
     
-    c1=rnd(.95,1)   # 1.0 in paper
+    c1=1.0   # 1.0 in paper
     c2=rnd(0,.01)  # c1 in paper
-    c3=rnd(.4,.6)  # c2 in paper
-    c4=rnd(2.,3.)  # c3 in paper
+    c3=rnd(.35,.4)  # c2 in paper
+    c4=rnd(2.4, 2.8)  # c3 in paper
     
     mtf_param=[c1,c2,c3,c4]
     
-    blur = rnd(0, 2.5) #rnd(5,7)
+    blur = rnd(0, 2.0)
     
     entry.load()
     
@@ -111,9 +115,9 @@ def makeimage(entry, size, imgnum, rndnums):
     
     entry.create_image(ctf,sampling,blur,dose,mtf_param)
     
-    entry.create_label(sampling, width = int(.4/sampling), num_classes=False)
+    entry.create_label(sampling, width = int(spotsize/sampling), num_classes=False)
     
-    entry.local_normalize(12./sampling, 12./sampling)
+    entry.local_normalize(normalizerange, normalizerange)
 
     shape = entry._image.shape[1:3]
     assert not ((size[0] > shape[0]) != (size[1] > shape[1]))
@@ -169,7 +173,12 @@ class MakeImages:
         rndnums = np.random.uniform(0.0, 1.0, size=(self.batchsize, 20))
         imagesizes = self.imagesize[np.newaxis,:] * np.ones(self.batchsize, int)[:,np.newaxis]
         assert imagesizes.shape == (self.batchsize, 2)
-        with Pool() as pool:
+        if 'LSB_MAX_NUM_PROCESSORS' in os.environ:
+            maxcpu = int(os.environ['LSB_MAX_NUM_PROCESSORS'])
+            print("Setting max number of CPUs to", maxcpu, flush=True)
+        else:
+            maxcpu = None
+        with Pool(maxcpu) as pool:
             self.precomputed = deque(pool.starmap(makeimage, 
                                                     zip(entries, imagesizes, sequence, rndnums)))
             
@@ -193,16 +202,18 @@ if __name__ == "__main__":
         folderlabel = ''
         
     data_dir = "data/cluster-110-single-class/"
-    summary_dir = "summaries/" + datetime.now().strftime("%Y%m%d-%H%M%S") + "/"
+    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    summary_dir = "summaries/" + timestamp + "/"
     graph_path = 'graphs'+folderlabel+'/clusters-{}.h5'
-    debug_dir = "debug/" +  datetime.now().strftime("%Y%m%d-%H%M%S") + "/"
+    debug_dir = "debug/" +  timestamp + "/"
     
     graph_dir = os.path.dirname(graph_path)
     if graph_dir and not os.path.exists(graph_dir):
         os.makedirs(graph_dir)
     if debug:
         os.makedirs(debug_dir)
-
+    logfile = open(os.path.join(graph_dir, timestamp + '.log'), "wt", buffering=1)
+        
     # Keep a copy of this script for reference
     shutil.copy2(__file__, graph_dir)
         
@@ -219,16 +230,16 @@ if __name__ == "__main__":
         numgpus = 1
     batch_size = numgpus
 
-    image_size = (424,424) # spatial dimensions of input/output
+    image_size = (248,248) # spatial dimensions of input/output
     #image_size = (360,360) # spatial dimensions of input/output
     image_features = 1 # depth of input data
     num_classes = 1 # number of predicted class labels
-    num_epochs = 100 # number of training epochs
-    save_epochs = 5
+    num_epochs = 20 # number of training epochs
+    save_epochs = 1
 
     # restore = False # restore previous graph
-    loss_type = 'binary_crossentropy' # mse or binary_cross_entropy
-    #loss_type = 'mse' # mse or binary_cross_entropy
+    #loss_type = 'binary_crossentropy' # mse or binary_cross_entropy
+    loss_type = 'mse' # mse or binary_cross_entropy
     
     num_in_epoch = data.num_examples//batch_size
     num_iterations=num_epochs*num_in_epoch
@@ -264,6 +275,7 @@ if __name__ == "__main__":
     before = time.time()
 
     for epoch in range(num_epochs):
+        summary = None
         for i in range(num_in_epoch):
             #image,label = next_example(data)
             image,label = imagestream.next_example()
@@ -280,7 +292,11 @@ if __name__ == "__main__":
             # Train
             #y = keras.utils.to_categorical(label,2)
             #model.train_on_batch(image, y)
-            model.train_on_batch(image, label)
+            h = model.train_on_batch(image, label)
+            if summary is None:
+                summary = np.array(h)
+            else:
+                summary += h
 
             # Print where we are
             print("Epoch: {}/{} Batch: {}/{}   [{}/{}]".format(epoch, num_epochs,
@@ -291,6 +307,8 @@ if __name__ == "__main__":
         # Save 
         if (epoch+1) % save_epochs == 0:
             serial_model.save_weights(graph_path.format(epoch))
+        print(epoch, *tuple(summary))
+        print(epoch, *tuple(summary), file=logfile)
     
     totaltime = time.time() - before
     print("Time: {} sec  ({} hours)".format(totaltime, totaltime/3600))
