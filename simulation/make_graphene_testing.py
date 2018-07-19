@@ -19,10 +19,10 @@ sampling=24.48/2048*10
 L=sampling*N
 cell=(L,L,5)
 
-num_examples=1000
+num_examples=500
 first_number=0
 
-dir_name='../data/graphene-random/'
+dir_name='../data/graphene-random-test/'
 label_size=(N,N)
 
 
