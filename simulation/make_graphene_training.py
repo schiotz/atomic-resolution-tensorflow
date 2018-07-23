@@ -98,7 +98,7 @@ for i in range(num_examples):
     
     wave.array=wave.array.astype(np.complex64)
     
-    positions=project_positions(atoms,distance=0)/sampling
+    positions=project_positions(atoms,distance=0)
     classes=[0]*len(positions)
     label=create_label(positions,label_size,6)
     
