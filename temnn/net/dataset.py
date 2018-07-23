@@ -50,7 +50,10 @@ class DataEntry(object):
                 self._classes = npzfile['classes']
             except KeyError:
                 self._classes = None
-            self._heights = npzfile['heights']
+            try:
+                self._heights = npzfile['heights']
+            except KeyError:
+                self._heights = None
         
     def create_image(self, ctf, sampling, blur, dose, MTF_param=None, concatenate=False):
         image = self._wave.apply_ctf(ctf).detect(resample=sampling,blur=blur,dose=dose,MTF_param=MTF_param)
