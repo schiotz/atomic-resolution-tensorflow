@@ -22,15 +22,15 @@ def precision_recall(predicted, target, sampling):
     recall = (x <= distance).sum() / len(target)
     return (precision, recall)
 
-def evaluate_result(inference, label, sampling):
+def evaluate_result(inference, label, sampling, accept_distance=2.0, threshold=0.6):
     "Evaluate the prediction for an image."
-    distance = int(2.5 / sampling)
+    distance = int(accept_distance / sampling)
     # Find the peaks
     infer_peaks = find_local_peaks(inference[:,:,0], min_distance=distance, 
-                                   threshold=0.6, exclude_border=10,
+                                   threshold=threshold, exclude_border=10,
                                    exclude_adjacent=True)
     label_peaks = find_local_peaks(label[:,:,0], min_distance=distance, 
-                                   threshold=0.6, exclude_border=10,
+                                   threshold=threshold, exclude_border=10,
                                    exclude_adjacent=True)
 
     # Refine the peaks
