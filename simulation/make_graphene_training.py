@@ -12,6 +12,7 @@ from scipy.spatial import Voronoi
 from ase.io import write,read
 import scipy.spatial
 from glob import glob
+import os
 
 
 N=360
@@ -25,6 +26,11 @@ first_number=0
 dir_name='../data/graphene-random/'
 label_size=(N,N)
 
+# Make sure working folders exist
+if not os.path.exists(dir_name):
+    print("Creating folder", dir_name)
+    for subf in ['label', 'wave', 'model', 'points']:
+        os.makedirs(os.path.join(dir_name, subf))
 
 def interpolate_smoothly(points, N):
     half = (len(points) + 1) // 2
