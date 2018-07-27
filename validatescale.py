@@ -17,6 +17,7 @@ import sys
 import os
 from collections import deque
 from multiprocessing import Pool
+import shutil
 from natsort import natsorted
 
 # Data folders
@@ -154,7 +155,10 @@ print("Number of training images:", n_train)
 data_valid = load(validation_dir)
 imagestream_valid = MakeImages(data_valid, image_size)
 n_valid = data_valid.num_examples
-print("Number of validation images:", n_train)
+print("Number of validation images:", n_valid)
+
+# Keep a copy of this script for reference
+shutil.copy2(__file__, graph_dir)
 
 # Find the latest CNN
 print("Looking for CNNs in files matching", graph_path)
